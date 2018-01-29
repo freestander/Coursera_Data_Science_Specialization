@@ -1,0 +1,207 @@
+---
+title: "Practical Machine Learning Project"
+author: "freestander"
+date: "Sunday, September 27, 2015"
+output: html_document
+---
+
+## Introduction
+
+This project analyzes the personal activity data collected from body movement. The purpose is to quantify how well people perform on a particular activity by using a predictive model to classify correct and incorrect movements.
+
+
+## Data Sources
+
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+More information is available from the website here: 
+http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Data Processing 
+
+First we download the data from sources and load it into R studio.
+
+```{r}
+# remove all the previous data in the environment
+rm(list = ls(all = TRUE))
+
+# set up the working directory
+setwd("C://Users//Qi-Desktop//Documents//RProjects//Coursera//Practical_Machine_Learning")
+
+# load the data set for training and testing
+training <- read.csv(file="./Data/pml-training.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c("", "NA", "#DIV/0!"))
+testing_ds <- read.csv(file="./Data/pml-testing.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c("", "NA", "#DIV/0!"))
+
+# convert the target variable into factor variable
+training$classe <- as.factor(training$classe)
+```
+
+Check the dimension of the training data set.
+
+```{r}
+dim(training)
+```
+
+Check the dimension of the testing data set.
+
+```{r}
+dim(testing_ds)
+```
+
+Next we do some data processing to prepare for the modeling dataset. First We load "caret" package and split the training data into traning set and validation set.
+
+```{r}
+library(caret)
+# split the training data set into training (70%) and validation (30%) subsets
+set.seed(123)
+train_split <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+training_ds <- training[train_split, ]
+validation_ds <- training[-train_split, ]
+```
+
+## Variable Selection
+
+By inspecting the variables in the data sets, we can see a lot variables with NA values or near zero variance. Also some descriptive variables should not be included in the prediction model.
+
+```{r}
+# function to check the number of missing values from a variable
+na_size <- sapply(training_ds, function(x) 
+  {
+  sum(is.na(x))
+  })
+# variables with more than 90% missing values
+na_var <- names(na_size[na_size >= 0.9 * dim(training_ds)[1]])
+# exclude variables with more than 90% missing values
+training_ds <- training_ds[, !names(training_ds) %in% na_var]
+
+# variables with descriptive features 
+descr_var <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")
+# exclude variables with descriptive features 
+training_ds <- training_ds[, !names(training_ds) %in% descr_var]
+
+# variables near zero variance
+no_variance_var <- nearZeroVar(training_ds)
+# exclude variables with near zero variance
+training_ds <- training_ds[, !names(training_ds) %in% no_variance_var]
+```
+
+Check the dimension of the training data set after the split and variable selection.
+
+```{r}
+dim(training_ds)
+```
+
+By visualizing the distribution of the target variable, we found no rare event that needs special processing like stratified sampling or weighted regression.
+```{r}
+# frequency table of the target variable
+table(training_ds$classe)
+# frequency plot of the target variable
+plot(training_ds$classe, main="Distribution of classe in the Training Set", xlab="classe Levels", ylab="Frequency")
+```
+
+## Predictive Model Training
+
+We are going to train the predictive model using two most algorithms "rpart" (decision trees) and "rf" (random forest). 
+
+First we train the model using "rpart" algorithm, and use confusion matrix to check prediction accurancy.
+
+```{r, cache=TRUE}
+set.seed(123)
+library(rpart)
+model_rpart <- rpart(classe ~ ., data=training_ds, method="class")
+# use confusion matrix to check accuracy
+rpart_pred_traiing_ds <- predict(model_rpart, training_ds, type="class")
+confusionMatrix(training_ds$classe, rpart_pred_traiing_ds)
+```
+
+Next we training the model using "rf" algorithm, and use confusion matrix to check prediction accurancy.
+
+```{r, cache=TRUE}
+set.seed(123)
+# train the model using "rf" algorithm
+# model_rf <- train(classe ~ ., method="rf", data=training_ds, verbose=F)
+library(randomForest)
+model_rf <- randomForest(classe ~ ., data=training_ds, importance=TRUE, ntrees=10)
+# use confusion matrix to check accuracy
+rf_pred_training_ds <- predict(model_rf, training_ds)
+confusionMatrix(training_ds$classe, rf_pred_training_ds)
+```
+
+## Model Selection
+
+We then predict on the validation set using the two models and choose one with the higher accuracy.
+
+First we check prediction accurancy on the validation set using "rpart" algorithm.
+
+```{r}
+# use confusion matrix to check accuracy
+rpart_pred_validation_ds <- predict(model_rpart, validation_ds, type="class")
+confusionMatrix(validation_ds$classe, rpart_pred_validation_ds)
+```
+
+Next we check prediction accurancy on the validation set using "rf" algorithm.
+
+```{r}
+# use confusion matrix to check accuracy
+rf_pred_validation_ds <- predict(model_rf, validation_ds)
+confusionMatrix(validation_ds$classe, rf_pred_validation_ds)
+```
+
+As a result, "rf" algorithm has better prediction accuracy on the validation set, thus we use it to predict on the final testing set.
+
+## Cross Validation Tuning 
+
+To to avoid over-fitting and further improve the model, we also use cross validation with 10 folds.
+
+```{r, cache=TRUE}
+set.seed(123)
+control_CV <- trainControl(method = "repeatedcv", number = 10, repeats = 10, allowParallel=TRUE)
+model_rf_CV <- train(classe ~ ., method="rf", data=training_ds, trControl = control_CV)
+```
+
+Next we check prediction accurancy on the validation set using "rf" algorithm with cross validation. After cross validation step, the prediction accuracy is increased from 99% to 99%. 
+
+```{r}
+# use confusion matrix to check accuracy
+rf_pred_validation_ds_CV <- predict(model_rf_CV, validation_ds)
+confusionMatrix(validation_ds$classe, rf_pred_validation_ds_CV)
+```
+
+## Variable Importance
+
+As a side product, we can check the variable importance in the final model.
+
+```{r}
+vi <- varImp(model_rf_CV$finalModel)
+plot(vi, top = 20)
+```
+
+
+## Test Set Prediction Result
+
+We then save the output to files according to instructions and post it to the submission page.
+
+```{r, echo=FALSE}
+answers <- predict(model_rf_CV, testing_ds)
+answers
+```
+
+```{r, echo=FALSE}
+# convert result to a character vector
+answers <- as.vector(ptest)
+
+pml_write_files = function(x) {
+    n = length(x)
+    for (i in 1:n) {
+        filename = paste0("problem_id_", i, ".txt")
+        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE)
+    }
+}
+
+pml_write_files(answers)
+```

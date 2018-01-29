@@ -1,0 +1,105 @@
+---
+title: "Regression Analysis on Motor Trend Dataset"
+author: "freestander"
+date: "Saturday, August 22, 2015"
+output: pdf_document
+---
+
+## Executive Summary
+
+Motor Trend is interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome) by looking at a data set of a collection of cars. In this analysis, we are trying to answer the following two questions:
+
+1. "Is an automatic or manual transmission better for MPG"
+2. "Quantify the MPG difference between automatic and manual transmissions"
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+
+## Exploratory Data Analysis 
+
+First, we review each field in the dataset using the summary function and also draw a pariwise scattor plot between the variables (shown in appendix). 
+
+```{r}
+summary(mtcars)
+```
+
+## Data Preprocessing
+
+Next, we transform some categorical variables into factor types to prepare for the regression analysis in the later steps.
+
+```{r}
+mtcars$cyl <- factor(mtcars$cyl)
+mtcars$vs <- factor(mtcars$vs)
+mtcars$am <- factor(mtcars$am, labels=c('Automatic','Manual'))
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
+```
+
+## Comparison of Automatic vs Manual Transmission in MPG
+
+We draw a boxplot of MPG for different transmission types (show in appendix). By visual inpsection it looks like the manual transmission is better than the automatic transmission in MPG. We further conduct a t-test to confirm this.
+
+```{r}
+t.test(mpg ~ am, data = mtcars) 
+```
+
+Since the p-value is 0.00137, and the lower and upper bounds of 95% confidence interval are both below 0. The mean in group Automatic is 17.14737 and the mean in group Manual is 24.39231. Thus we reject our null hypothesis and conclude the manual transmission is better than the automatic transmission in MPG.
+
+## Regression Model Selection
+
+We use regression model to identify the variables that account for MPG differences. 
+
+First we try the single vairable regression model where there is only one variable "am". The p-value is 0.000285, and the adjusted R-squared is only 0.3385, which means the model only accounts for 33.85% variance.
+
+```{r}
+m1 <- lm(mpg ~ am, data = mtcars)
+summary(m1)
+```
+
+Next, we try the multivariate linear regression with all variables included. The p-value is 0.000124, and the adjusted R-squared is 0.779, which means the model accounts for 77.9% variance. Although there is a great improvement in adjusted R-squared, it doesn't mean all variables should be included. From the coefficients below, we can see some of the variables have insignificant p-value thus may bring noise to the model if included in the regression.
+
+```{r}
+m2 <- lm(mpg ~ ., data = mtcars)
+summary(m2)
+```
+
+In the final step, we perform a stepwise model selection using backward elimination.
+
+```{r, results='hide'}
+m3 <- step(m2, direction="backward")
+```
+
+The remaining variables ("cyl", "hp", "wt", "am") are significant and fit the model best. The p-value is 1.506e-10, and the adjusted R-squared is 0.8401, which means the model accounts for 84.01% variance. Compared to automatic transmission, MPG increases by 1.8 if having a manual transmission. Moreover, the regression result shows MPG decreases -3.03 for "cyl6", -2.16 for "cyl8", -0.03 for "hp", -2.5 for "wt", respectively. 
+
+```{r}
+summary(m3)
+```
+
+We also do the residual plots (shown in appendix) to check how well the regression model fits. The "Residuals vs Fitted" plot shows no pattern, supporting the independence assumption. The "Normal Q-Q" plot shows that residuals can be approximated by normal distribution. The "Scale-Location" plot shows that the points are randomly distributed, supporting constant variance assumption. The "Residuals vs Leverage" plot shows that no particular outlier is observed.
+
+## Conclusion
+
+According to the t-test with 95% condifence interval, manual tranmission has higher MPG than automatic transmission. The mean in group Automatic is 17.14737 and the mean in group Manual is 24.39231. From the best regression model, we can see that rate of change in MPG with respect to manual transmission compared to automatic transmission is about 1.8.
+
+However, there are some limitations that we need to address to further improve the analysis result. For example, the residual plots show some transformation of the variables are needed to achieve linearity, and the sample size is too small (only 32 records) to arrive at a reliable conclusion.
+
+## Appendix
+
+The following is a pairwise scattor plot between different variables.
+
+```{r}
+pairs(mtcars, panel=panel.smooth, main="Pairwise Scattor Plot of Motor Trend Car Road Tests")
+```
+
+The following is a boxplot of MPG for different transmission types.
+
+```{r}
+boxplot(mpg ~ am, data = mtcars, xlab = "Transmission Type", ylab = "MPG", main="MPG by Transmission Type")
+```
+
+The following are the residual plots to check how well the regression model fits.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(m3)
+```
+

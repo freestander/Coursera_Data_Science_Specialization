@@ -1,0 +1,164 @@
+---
+title: "The Impact of Severe Weather Events on Public Health and Economy"
+author: "freestander"
+date: "Friday, May 22, 2015"
+output: html_document
+---
+
+# Synopsis
+
+The analysis shows the impact of the events to both public health and economic for communities based on NOAA storm data between 1950 and 2011. Tornado ranks the most dangerous weather event with regard to fatalities and excessive heat ranks the second. Tornado, tstm wind, and flood are top three causes for injuries. Flash flood and thunderstorm winds rank the first and second in terms of property damages. The largest crop damages are caused by drought, flood and river flood, in descending order.
+
+# Data Processing
+
+The NOAA storm database is a csv (comma separated value) file compressed in "bz2"" format. We load the data into R using read.csv() function. There is also some documentation of the database available. We use the "cache = TRUE" option in the data processing step since it is quite time consuming.
+
+```{r, cache = TRUE}
+# set the working directory (user specific)
+setwd("C://Users//Qi-Desktop//Documents//RProjects//Coursera//Reproducible_Research//Project_2")
+# read the NOAA storm data into R
+NOAA_Storm <- read.csv(bzfile("data/repdata-data-StormData.csv.bz2"))
+```
+
+There is also some extra data processing steps to clean up the field "EVTYPE", e.g., converting to lower cases and replacing some special characters with blank.
+
+```{r}
+# change the storm event type to lower case 
+NOAA_Storm$EVTYPE <- tolower(NOAA_Storm$EVTYPE)
+# replace some special characters with "blank""
+NOAA_Storm$EVTYPE <- gsub("[[:blank:][:punct:]+]", " ", NOAA_Storm$EVTYPE)
+```
+
+The property damage is represented with "PROPDMG" in dollars and the exponent "PROPDMGEXP". Similarly, the crop damage is represented with "CROPDMG"" and "CROPDMGEXP". We need to convert them into numeric values for ranking purposes. 
+
+```{r}
+# exponential transformation function
+# h(hundred) -> 2, k(thousand) -> 3, m(million) -> 6 , b(billion) -> 9
+exp_transform <- function(e) {
+    if (e %in% c('h', 'H'))
+        return(2)
+    else if (e %in% c('k', 'K'))
+        return(3)
+    else if (e %in% c('m', 'M'))
+        return(6)
+    else if (e %in% c('b', 'B'))
+        return(9)
+    else if (!is.na(as.numeric(e)))
+        return(as.numeric(e))
+    else if (e %in% c('', '-', '?', '+'))
+        return(0)
+    else {
+        stop("Invalid value")
+    }
+}
+```
+
+```{r}
+# compute the property damage by converting the expoential funtions to numeric values
+property_damange_exp <- sapply(NOAA_Storm$PROPDMGEXP, FUN=exp_transform)
+NOAA_Storm$property_damage <- NOAA_Storm$PROPDMG * (10^property_damange_exp)
+# compute the crop damage by converting the expoential funtions to numeric values
+crop_damage_exp <- sapply(NOAA_Storm$CROPDMGEXP, FUN=exp_transform)
+NOAA_Storm$crop_damage <- NOAA_Storm$CROPDMG * (10^crop_damage_exp)
+```
+
+# Events with respect to Population Health
+
+This section ranks the events with respect to the number of fatalities and injuries.
+
+```{r}
+library(plyr)
+# sum up the fatalities and injuries for different type of events
+health_events <- ddply(NOAA_Storm, .(EVTYPE), summarize, fatalities = sum(FATALITIES), injuries = sum(INJURIES))
+# sort the events with fatalities in descending order
+fatal_rank <- health_events[order(health_events$fatalities, decreasing = T), ]
+# sort the events with injuries in descending order
+injury_rank <- health_events[order(health_events$injuries, decreasing = T), ]
+```
+
+The following code shows the top ten events that have the most fatalities.
+
+```{r}
+# show the top 10 events that have the most fatalities
+fatal_top_10 <- fatal_rank[1:10, c("EVTYPE", "fatalities")]
+fatal_top_10
+```
+
+The following code shows the top ten events that have the most injuries.
+
+```{r}
+# show the top 10 events that have the most injuries
+injury_top_10 <- injury_rank[1:10, c("EVTYPE", "injuries")]
+injury_top_10
+```
+
+# Events with respect to Economic Consequences
+
+This section ranks the events with respect to the economic consequences.
+
+```{r}
+library(plyr)
+# Compute the economic loss for each event type
+economy_loss <- ddply(NOAA_Storm, .(EVTYPE), summarize, property_damage = sum(property_damage), crop_damage = sum(crop_damage))
+# sort the events with property damage in descending order
+property_damage_rank <- economy_loss[order(economy_loss$property_damage, decreasing = T), ]
+# sort the events with crop damage in descending order
+crop_damage_rank <- economy_loss[order(economy_loss$crop_damage, decreasing = T), ]
+```
+
+The following code shows the top ten events that have the most severe property damage.
+
+```{r}
+# show the top 10 events that have the most property damage
+property_damage_top_10 <- property_damage_rank[1:10, c("EVTYPE", "property_damage")]
+property_damage_top_10
+```
+
+The following code shows the top ten events that have the most severe crop damage.
+
+```{r}
+# show the top 10 events that have the most crop damage
+crop_damage_rank_top_10 <- crop_damage_rank[1:10, c("EVTYPE", "crop_damage")]
+crop_damage_rank_top_10
+```
+
+# Results
+
+In terms of population health, we can see that the top three causes for fatalities are tornado, excessive heat, and flash flood. The top three causes for injuries are tornado, stsm wind, and flood. In terms of economic consequences, the top three causes for property damages are flash flood, thunderstorm winds, and tornado. The top three crop damages are drought, flood, and river flood.
+
+Note that some extra efforts can be spent to further clean up the data. For example, tstm wind and thunderstorm wind may represent the same event, while flood, flooding, flash flood, and river flood may mean similar events that could be merged to derive more accurate conclusions.
+
+
+```{r}
+# make a panel plot consisting of fatalities, injuries, property damages, and crop damages 
+library(lattice)
+
+par(mfrow=c(2,2), mar = c(7, 4, 2, 4))
+
+barplot(fatal_top_10$fatalities/1000,
+        names.arg = fatal_top_10$EVTYPE,
+        ylab = "Frequency in Thousands",
+        main = "Top Fatality Events",
+        las = 2)
+
+barplot(injury_top_10$injuries/1000,
+        names.arg = injury_top_10$EVTYPE,
+        ylab = "Frequency in Thousands",
+        main = "Top Injury Events",
+        las = 2
+        )
+
+barplot(property_damage_top_10$property_damage/10^12,
+        names.arg = property_damage_top_10$EVTYPE,
+        ylab = "Damage in Trillion Dollars", 
+        main = "Top Property Damage Events",
+        las = 2
+        )
+
+barplot(crop_damage_rank_top_10$crop_damage/10^9,
+        names.arg = crop_damage_rank_top_10$EVTYPE,
+        ylab = "Damage in Billion Dollars", 
+        main = "Top Crop Damage Events",
+        las = 2
+        )
+```

@@ -1,0 +1,147 @@
+---
+title: "Statistical_Inference_Project_Part_2"
+author: "freestander"
+date: "Sunday, July 26, 2015"
+output: html_document
+---
+
+# Problem Description
+
+We will analyze the ToothGrowth data in the R datasets package. 
+
+The project is divided into 4 sections:
+
+1. Load the ToothGrowth data and perform some basic exploratory data analyses.
+
+2. Provide a basic summary of the data.
+
+3. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose.
+
+4. State your conclusions and the assumptions needed for the conclusions.
+
+## ToothGrowth Data and Exploratory Analysis
+
+First we load the ToothGrowth dataset into the workspace.
+
+```{r}
+# load the dataset library
+library(datasets)
+# load the ToothGrowth dataset
+data(ToothGrowth)
+# attach the ToothGrowth dataset
+attach(ToothGrowth)
+```
+
+Check the format of the dataset by listing the first few records.
+
+```{r}
+head(ToothGrowth)
+```
+
+Check the structure of the dataset. We can see that supplement only has two levels "OJ" and "VC".
+
+```{r}
+str(ToothGrowth)
+```
+
+## Summary of the Data
+
+Show the summary of the dataset. 
+
+```{r}
+summary(ToothGrowth)
+```
+
+Check the sample size partitioned by supplement and dose.
+
+```{r}
+# convert dose to a factor variable
+dose <- as.factor(dose)
+# tabulate the sample size by supplement and dose 
+table(supp, dose)
+```
+
+We can see that each supplment and dose value combination has 10 samples. The ToothGrowth dataset contains teech growth at three dose sizes (0.5, 1, 2) with two supplements ("OJ" and "VC").
+
+Next we draw a boxplot to visualize the effects of dose and supplement on teeth growth.
+
+```{r}
+# load ggplot library
+library(ggplot2)
+# draw the plot
+p <- ggplot(ToothGrowth, aes(x=factor(dose), y=len,fill=factor(dose)))
+p <- p + geom_boxplot(notch=F) + facet_grid(.~supp) 
+p <- p + scale_x_discrete("Dosage (Milligram)")
+p <- p + scale_y_continuous("Teeth Growth")
+p <- p + ggtitle("Dosage and Supplement on Teeth Growth")
+p
+```
+
+From the boxplot we can roughly tell:
+
+1. For both supplements ("OJ" and "VC"), the teech growth increases as the dose increases.
+
+2. When dose = 0.5 and 1, "OJ" is more effective than "VC" on teech growth. However, when dose = 2, there is no obvious difference between "OJ" and "VC" on teeth growth.
+
+Next we are going to verify the visualization results using T tests assuming non-paired and unequal variance between the tested groups.
+
+## Confidence Interval and Hypothesis Test
+
+The following T test shows the difference of teech gowth between dose 0.5 and 1. Both the confidence interval (<0) and small p-value (<0.05) suggest more teech growth of dose = 1 over dose = 0.5.
+
+```{r}
+# T Test by dose between 0.5 and 1.
+t.test(len ~ dose, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose %in% c(0.5, 1), ])
+```
+
+The following T test shows the difference of teech gowth between dose 0.5 and 2. Both the confidence interval (<0) and small p-value (<0.05) suggest more teech growth of dose = 2 over dose = 0.5.
+
+```{r}
+# T Test by dose between 0.5 and 2.
+t.test(len ~ dose, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose %in% c(0.5, 2), ])
+```
+
+The following T test shows the difference of teech gowth between dose 1 and 2. Both the confidence interval (<0) and small p-value (<0.05) suggest more teech growth of dose = 2 over dose = 1.
+
+```{r}
+# T Test by dose between 1 and 2.
+t.test(len ~ dose, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose %in% c(1, 2), ])
+```
+
+The following T test shows the difference of teech gowth between two supplements. The confidence interval contains 0 and p-value (>0.05) suggest there is no significant difference between both supplements.
+
+```{r}
+# T Test by supplement type
+t.test(len ~ supp, paired = F, var.equal = F, data = ToothGrowth)
+```
+
+The following T test shows the difference of teech gowth between two supplements when dose = 0.5. Both the confidence interval (<0) and small p-value (<0.05) suggest more teech growth of supplement "OJ" over "vc".
+
+```{r}
+# T Test by supplement type when when dose=0.5.
+t.test(len ~ supp, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose == 0.5, ])
+```
+
+The following T test shows the difference of teech gowth between two supplements when dose = 1. Both the confidence interval (<0) and small p-value (<0.05) suggest more teech growth of supplement "OJ" over "vc".
+
+```{r}
+# T Test by supplement type when dose=1.
+t.test(len ~ supp, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose == 1, ])
+```
+
+The following T test shows the difference of teech gowth between two supplements when dose = 2. The confidence interval contains 0 and p-value (>0.05) suggest there is no significant difference between both supplements.
+
+```{r}
+# T Test by supplement type when dose=2.
+t.test(len ~ supp, paired = F, var.equal = F, data = ToothGrowth[ToothGrowth$dose == 2, ])
+```
+
+## Conclusions and Assumptions
+
+1. The p-value and confidence intervals suggest the dose size has significant effect on teech growth, which aligns with our visualization result.
+
+2. The p-value and confidence intervals suggest "OJ" over "vc" has more significant impact on teech effect when dose = 0.5 and 1, but fail to prove significant difference when dose = 2, which also aligns with our visualization result.
+
+As a result, we can conclude that there is significant difference in teech growth when dose size increases. However, we cannot conclude there is significant difference in teech growth caused by the two supplements. 
+
+Finally, all the T tests assume non-paired and unequal variance between the tested groups.

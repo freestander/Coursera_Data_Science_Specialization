@@ -1,0 +1,9 @@
+name: ds_capstone_app
+account: freestander
+server: shinyapps.io
+appId: 97709
+bundleId: 432971
+url: https://freestander.shinyapps.io/ds_capstone_app/
+when: 1461553440.73341
+asMultiple: FALSE
+asStatic: FALSE

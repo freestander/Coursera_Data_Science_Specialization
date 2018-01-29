@@ -1,0 +1,40 @@
+Data Science Capstone - Text Prediction Model
+========================================================
+author: freestander
+date: April 24 2016
+
+Overview
+========================================================
+The goal of the data science capstone project is to build a model to predict the next word based on previous input from the user. The major steps of the project include the following:
+
+- Exploratory Data Analysis
+- Building Prediction Model
+- Building Shiny App
+
+Exploratory Data Analysis
+========================================================
+In the exploratory analysis part, the objective is to understand the data content and preparing the modeling dataset. The following steps are involved in this process: 
+
+- Loading and merging the data from three sources: blogs, news and twitter
+- Cleaning up the data
+- Sampling the data to balance accurancy vs. performance
+- Generating the corpus
+- Generating the N-Grams tokenizers
+
+Prediction Model
+========================================================
+This model uses a collection of N-Grams (2, 3, 4) to predict the next word. If nothing matches, the model returns "the" which is the most frequent word. 
+
+- Default: The default model uses the Katz back-off algorithm and all the N-Grams (2, 3, 4).
+- Bi-Grams: The Bi-Grams model uses the last word of user input to predict the next word.
+- Tri-Grams: The Tri-Grams model uses the last two words of user input to predict the next word.
+- Quad-Grams: The Quad-Grams model uses the last three words of user input to predict the next word.
+
+Shiny App
+========================================================
+The final model is deployed in Shiny App and requires the following input from the user:
+
+- N-Grams Option (2, 3, 4)
+- User Input Textbox
+
+After the user selects the N-Grams option and input the text, the app will return the next most likely word. 

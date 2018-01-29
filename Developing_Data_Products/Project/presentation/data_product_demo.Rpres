@@ -1,0 +1,54 @@
+Developing Data Product Demo
+========================================================
+author: freestander
+date: `r format(Sys.Date(), format = "%B %d %Y")`
+
+Overview
+========================================================
+We want to build a regression model to predict the miles per gallon (MPG) by using a set of car features. The model was built in R and deployed in Shiny App for user interation. 
+
+- Data Analysis
+- Regression Model
+- Shiny App
+
+Data Analysis
+========================================================
+First, we review each field in the dataset using the summary function. Besides the target variable MPG, there are 10 variables in the dataset. 
+
+Next, we transform some categorical variables into factors to prepare for the regression analysis in the later steps.
+
+```{r}
+summary(mtcars)
+```
+
+```{r, results='hide'}
+mtcars$cyl <- factor(mtcars$cyl)
+mtcars$vs <- factor(mtcars$vs)
+mtcars$am <- factor(mtcars$am, labels=c('Automatic','Manual'))
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
+```
+
+Regression Model
+========================================================
+We will use regression model to identify the variables that account for MPG differences. First, we try the multivariate linear regression with all variables included. Next, we perform a stepwise model selection using backward elimination. The remaining variables ("cyl", "hp", "wt", "am") are significant and fit the model best. The p-value is 1.506e-10, and the adjusted R-squared is 0.8401.
+
+```{r, results='hide'}
+m1 <- lm(mpg ~ ., data = mtcars)
+m2 <- step(m1, direction="backward")
+```
+
+```{r}
+summary(m2)
+```
+
+Shiny App
+========================================================
+The final model was deployed in Shiny App with the following input:
+
+- Number of cylinders
+- Gross horsepower
+- Weight (lb/1000)
+- Transmission (automatic/manual)
+
+After the user clicks "submit" button, the model will estimate the MPG and show the output on the page.
